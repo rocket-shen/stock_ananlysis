@@ -1,0 +1,179 @@
+/* static/style.css */
+.flex {
+    display: flex;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
+.items-end {
+    align-items: flex-end;
+}
+
+.text-gray-700 {
+    color: #4b5563;
+}
+
+.font-medium {
+    font-weight: 500;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem;
+}
+
+.p-2 {
+    padding: 0.5rem;
+}
+
+.border {
+    border: 1px solid #e5e7eb;
+}
+
+.rounded {
+    border-radius: 0.25rem;
+}
+
+.w-48 {
+    width: 12rem;
+}
+
+.bg-red-500 {
+    background-color: #ef4444;
+}
+
+.text-white {
+    color: #ffffff;
+}
+
+.hover\:bg-blue-600:hover {
+    background-color: #2563eb;
+}
+/* 移除 Tailwind 依赖，转换为标准 CSS */
+.text-bold-gray {
+    color: #4b5563; /* Tailwind 的 text-gray-700 */
+    font-weight: 700;
+}
+
+.sort-btn {
+    color: #3b82f6; /* Tailwind 的 text-blue-500 */
+    margin-left: 0.25rem;
+}
+
+.sort-btn:hover {
+    color: #1d4ed8; /* Tailwind 的 text-blue-700 */
+}
+
+.sort-btn.active {
+    color: #1d4ed8; /* Tailwind 的 text-blue-700 */
+    font-weight: 700;
+}
+
+/* 股票数据表格 */
+#tableContainer {
+    max-height: 800px;
+    overflow-y: auto;
+}
+
+#stockTable {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+}
+
+#stockTable thead th {
+    position: sticky;
+    top: 0;
+    background-color: #0b317e;
+    color: #ffffff;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+#stockTable th,
+#stockTable td {
+    min-width: 100px;
+    text-align: center;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb; /* Tailwind 的 border 默认颜色 */
+}
+
+#tableBody tr:hover {
+    background-color: #93c5fd; /* Tailwind 的 bg-blue-300 */
+}
+
+/* 财务报表表格 */
+#financialTable {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+}
+
+#financialTable thead th {
+    position: sticky;
+    top: 0;
+    background-color: #e5e7eb; /* Tailwind 的 bg-gray-200 */
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+#financialTable th,
+#financialTable td {
+    min-width: 100px;
+    text-align: center;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+/* 筛选结果表格 */
+#filterResultContainer {
+    max-height: 800px;
+    overflow-y: auto;
+    margin-top: 1.5rem;
+}
+
+#filterResultTable {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+}
+
+#filterResultTable thead th {
+    position: sticky;
+    top: 0;
+    background-color: #0b317e;
+    color: #ffffff;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+#filterResultTable th,
+#filterResultTable td {
+    min-width: 100px;
+    text-align: center;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+#filterResultBody tr:hover {
+    background-color: #93c5fd; /* Tailwind 的 bg-blue-300 */
+}
+
+/* 直方图容器 */
+#histogramContainer {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+#histogramImage {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
