@@ -27,6 +27,8 @@ def fetch_stock_data(symbol, start_date, end_date):
     stock_name = stock_dict_a.get(symbol, '未知证券')
     logging.info(f"获取股票名称: {stock_name}")
     df = ak.stock_zh_a_hist(symbol=symbol, period='daily', start_date=start_date, end_date=end_date, adjust='')
+    df['市值（亿）'] = np.where(df['换手率'] > 0, (df['成交额'] / df['换手率'] / 1000000).round(2), np.nan)
+    df['日期'] = pd.to_datetime(df['日期']).dt.strftime('%Y/%m/%d')
     logging.info(f"获取股票数据: {df.shape}")
 
     return df, stock_name
@@ -37,19 +39,21 @@ def process_stock_data(df, sort_column, sort_order):
     ascending = sort_order == 'asc'
     top_50 = df.sort_values(by=sort_column, ascending=ascending).head(50)
     select_columns = top_50[['日期', '开盘', '收盘', '最高', '最低', '涨跌幅', '成交量', '换手率', '市值（亿）']].sort_values(by='日期', ascending=True)
+    logging.info(f"数据列名: {df.columns}")
 
     return max_market_cap, min_market_cap, select_columns
 
 def fetch_stock_info(symbol):
     stock_df = ak.stock_individual_info_em(symbol=symbol)
-    needed_items = ['总股本', '流通股', '总市值']
-    filtered_df = stock_df[stock_df['item'].isin(needed_items)]
-    filtered_df = filtered_df.copy()
-    filtered_df['value'] = filtered_df['value'] / 100000000
-    filtered_dict = dict(zip(filtered_df['item'], filtered_df['value']))
-    current_price = filtered_dict['总市值'] / filtered_dict['总股本']
+    stock_info_dict = dict(zip(stock_df['item'],stock_df['value']))
+    current_price = stock_info_dict['总市值'] / stock_info_dict['总股本']
+    numeric_items = ['总股本', '流通股', '总市值', '流通市值']
+    for item in numeric_items:
+        if item in stock_info_dict:
+            stock_info_dict[item] = float(stock_info_dict[item]) / 100000000
+    stock_info_dict['现价'] = current_price
 
-    return filtered_dict, current_price
+    return stock_info_dict
 
 def fetch_financial_report(stock_code):
     file_names = [os.path.join(SAVE_DIRECTORY, f"业绩报表_{year}1231.csv") for year in range(2019, 2025)]
@@ -74,11 +78,12 @@ def fetch_financial_report(stock_code):
         raise Exception(f"未找到股票代码 {stock_code} 的业绩数据")
     # 合并所有年份的数据
     perf_df = pd.concat(results, ignore_index=True)
+    stock_abbr = perf_df['股票简称'][0]
     selected_columns = ['报告期', '营业总收入-营业总收入', '净利润-净利润', '每股收益', '每股净资产', '每股经营现金流量', '销售毛利率', '净资产收益率']
     available_columns = [col for col in selected_columns if col in perf_df.columns]
     data = perf_df[available_columns].to_dict(orient='records')
 
-    return available_columns, data
+    return stock_abbr, available_columns, data
 
 def generate_turnover_histogram(df, stock_name):
     try:
@@ -132,11 +137,9 @@ def filter_stocks(roe, gross_margin, net_profit):
         if not file_names:
             logging.error(f"未找到业绩报表文件: {SAVE_DIRECTORY}")
             raise FileNotFoundError(f"未找到业绩报表文件: {SAVE_DIRECTORY}")
-
         # 按文件名排序，确保最新年份的在最后
         file_names.sort()
         latest_report = file_names[-1]  # 获取最新年报文件
-
         filtered_sets = []
         common_codes  = None
 

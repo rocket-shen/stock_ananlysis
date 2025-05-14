@@ -2,7 +2,7 @@
 // 📦 工具函数
 // =====================
 function formatNumber(value) {
-    if (value == null || isNaN(value)) return '';
+    if (value == null || isNaN(value)) return value || '';
     return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -70,16 +70,25 @@ async function fetchStockData() {
         applyFilters();
         document.getElementById('stockTable').classList.remove('hidden');
 
-        if (stockCode !== lastStockCode) {
-            cachedFinancialData = await fetchJson(`/get_financial_report?symbol=${stockCode}`);
-            lastStockCode = stockCode;
-        }
-
-        renderFinancialTable(cachedFinancialData);
-
     } catch (err) {
         console.error('获取数据失败:', err);
         showError('获取数据失败: ' + err.message);
+    }
+}
+
+async function fetchFinancialRep() {
+    const stockCode = getValue('stockInfoCode');
+    try{
+        const data = await fetchJson(`/get_financial_report?symbol=${stockCode}`);
+         if (data.error) {
+            showError(data.error);
+            return;
+        }
+        
+        renderFinancialTable(data)
+    }catch (err) {
+        console.error('获取数据失败:', err);
+        showError('获取数据失败: ' + err.message)    
     }
 }
 
@@ -92,12 +101,14 @@ async function fetchStockInfo(){
         if (data.error) return showError(data.error);
 
         // 更新金融信息显示
-        document.getElementById('totalShares').textContent = formatNumber(data.filtered_dict['总股本']) + '亿';
-        document.getElementById('floatShares').textContent = formatNumber(data.filtered_dict['流通股']) + '亿';
-        document.getElementById('marketCap').textContent = formatNumber(data.filtered_dict['总市值']) + '亿';
-        document.getElementById('currentPrice').textContent = formatNumber(data.current_price) + '元';
+        document.getElementById('stockAbbre').textContent = formatNumber(data.stock_info_dict['股票简称']);
+        document.getElementById('industry').textContent = formatNumber(data.stock_info_dict['行业']);
+        document.getElementById('totalShares').textContent = formatNumber(data.stock_info_dict['总股本']) + '亿';
+        document.getElementById('floatShares').textContent = formatNumber(data.stock_info_dict['流通股']) + '亿';
+        document.getElementById('marketCap').textContent = formatNumber(data.stock_info_dict['总市值']) + '亿';
+        document.getElementById('currentPrice').textContent = formatNumber(data.stock_info_dict['现价']) + '元';
         // 显示金融信息区域
-        document.getElementById('financialExtra').classList.remove('hidden');
+        document.getElementById('stockInfoDict').classList.remove('hidden');
 
     }catch (err) {
         console.error('获取数据失败:', err);
@@ -136,12 +147,20 @@ function renderTable(data) {
 }
 
 function renderFinancialTable(data) {
-    if (data.error) return showError(data.error);
-    if (!data.table.length) return document.getElementById('financialContainer').classList.add('hidden');
+     if (data.error) {
+        showError(data.error);
+        return;
+    }
+    if (!data.table || !data.table.length) {
+        document.getElementById('financialContainer').classList.add('hidden');
+        return;
+    }
 
     const numeric = ['营业总收入-营业总收入', '净利润-净利润', '每股收益', '每股净资产', '每股经营现金流量', '销售毛利率', '净资产收益率'];
     const headerRow = document.getElementById('financialHeader');
     const body = document.getElementById('financialBody');
+
+    document.getElementById('stockAbbr').textContent = `${data.stock_abbr} 财务数据摘要:`
 
     headerRow.innerHTML = data.columns.map(col => `<th class="p-2 border">${col}</th>`).join('');
     body.innerHTML = data.table.map(row => `
@@ -205,7 +224,7 @@ function initEventListeners() {
     document.getElementById('fetchData').addEventListener('click', fetchStockData);
     document.getElementById('filterStocks').addEventListener('click', filterStocks);
     document.getElementById('stockInfo').addEventListener('click', fetchStockInfo);
-
+    document.getElementById('stockInfo').addEventListener('click', fetchFinancialRep);
     document.getElementById('stockCode').addEventListener('keydown', e => {
         if (e.key === 'Enter') fetchStockData();
     });
@@ -218,9 +237,6 @@ function initEventListeners() {
         if (submitter.id === 'filterStocks') {
             filterStocks(); // 执行股票筛选函数
         } 
-        else if (submitter.id === 'stockInfo') {
-            fetchStockInfo();  // 执行股票查询函数
-        }
     });
 
     document.querySelectorAll('.sort-btn').forEach(btn => {
