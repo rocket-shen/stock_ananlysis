@@ -38,10 +38,10 @@ def process_stock_data(df, sort_column, sort_order):
     min_market_cap = df.loc[df['市值（亿）'].idxmin(), ['日期', '市值（亿）']].to_dict()
     ascending = sort_order == 'asc'
     top_50 = df.sort_values(by=sort_column, ascending=ascending).head(50)
-    select_columns = top_50[['日期', '开盘', '收盘', '最高', '最低', '涨跌幅', '成交量', '换手率', '市值（亿）']].sort_values(by='日期', ascending=True)
+    select_top50 = top_50[['日期', '开盘', '收盘', '最高', '最低', '涨跌幅', '成交量', '换手率', '市值（亿）']].sort_values(by='日期', ascending=True)
     logging.info(f"数据列名: {df.columns}")
 
-    return max_market_cap, min_market_cap, select_columns
+    return max_market_cap, min_market_cap, select_top50
 
 def fetch_stock_info(symbol):
     stock_df = ak.stock_individual_info_em(symbol=symbol)
@@ -92,7 +92,7 @@ def generate_turnover_histogram(df, stock_name):
         turnover = df["换手率"].dropna()
         turnover = turnover[turnover > 0]
         if turnover.empty:
-            logging.warning(f"股票 {stock_name} 无有效换手率数据")
+            logging.warning(f"股票数据中包含无有效换手率数据")
             return None
 
         # 计算对数换手率
@@ -130,7 +130,7 @@ def generate_turnover_histogram(df, stock_name):
         logging.error(f"生成直方图失败: {str(e)}")
         return None
 
-def filter_stocks(roe, gross_margin, net_profit):
+def filter_stocks(years ,roe, gross_margin, net_profit, income_growth,net_pro_growth):
     try:
         # 获取所有业绩报表文件
         file_names = glob.glob(os.path.join(SAVE_DIRECTORY, '业绩报表_*.csv'))
@@ -139,16 +139,24 @@ def filter_stocks(roe, gross_margin, net_profit):
             raise FileNotFoundError(f"未找到业绩报表文件: {SAVE_DIRECTORY}")
         # 按文件名排序，确保最新年份的在最后
         file_names.sort()
+        if years > len(file_names):
+            print(f"警告：仅找到 {len(file_names)} 个文件，少于请求的 {years} 个。")
+            recent_years_files = file_names
+        else:
+            recent_years_files = file_names[-years:]  # 取最后n个文件
         latest_report = file_names[-1]  # 获取最新年报文件
+
         filtered_sets = []
         common_codes  = None
 
-        for file_name in file_names:
+        for file_name in recent_years_files:
             df = pd.read_csv(file_name, encoding='utf-8-sig', dtype={'股票代码': str})
             filtered_df = df[
                 (df['净资产收益率'] >= roe) &
                 (df['销售毛利率'] >= gross_margin) &
-                (df['净利润-净利润'] > net_profit)
+                (df['净利润-净利润'] >= net_profit) &
+                (df['营业总收入-同比增长'] >= income_growth) &
+                (df['净利润-同比增长'] >= net_pro_growth)
                 ]
             filtered_sets.append(filtered_df)  # 将筛选结果添加到列表中
             # 获取当前文件的股票代码集合
@@ -168,9 +176,7 @@ def filter_stocks(roe, gross_margin, net_profit):
         final_results = latest_df[latest_df['股票代码'].isin(common_codes)]
         selected_columns = ['股票代码', '股票简称', '每股收益', '营业总收入-营业总收入','净利润-净利润','每股净资产', '净资产收益率', '每股经营现金流量', '销售毛利率', '所处行业']
         final_results = final_results[selected_columns]
-        # 清理数据
         final_results = final_results.replace([np.nan, pd.NA], None)
-
         return final_results
     except Exception as e:
         logging.error(f"筛选股票失败: {str(e)}")

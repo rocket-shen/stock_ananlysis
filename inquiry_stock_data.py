@@ -38,12 +38,12 @@ def get_stock_data():
             return jsonify({'error': '日期格式错误，请使用 YYYYMMDD 格式'}), 400
 
         df, stock_name = fetch_stock_data(symbol, start_date, end_date)
-        max_market_cap, min_market_cap, select_columns = process_stock_data(df, sort_column, sort_order)
+        max_market_cap, min_market_cap, select_top50 = process_stock_data(df, sort_column, sort_order)
         histogram_image = generate_turnover_histogram(df, stock_name)  # 生成直方图
 
         response = {
             'shape': list(df.shape),
-            'table': select_columns.to_dict(orient='records'),
+            'table': select_top50.to_dict(orient='records'),
             'stock_name': stock_name,
             'max_market_cap': max_market_cap,
             'min_market_cap': min_market_cap,
@@ -87,14 +87,16 @@ def get_filter_stocks():
     try:
         # 获取前端传递的筛选条件
         data = request.get_json()
+        years = int(data['years'])
         roe = float(data['roe'])
         gross_margin = float(data['gross_margin'])
         net_profit = float(data['net_profit'])
+        income_growth = float(data['income_growth'])
+        net_pro_growth = float(data['net_pro_growth'])
 
-        app.logger.info(f"筛选股票: roe={roe}, gross_margin={gross_margin}, net_profit={net_profit}")
-
+        app.logger.info(f"筛选股票: years={years},roe={roe}, gross_margin={gross_margin}, net_profit={net_profit},income_growth={income_growth},net_pro_growth={net_pro_growth}")
         # 调用 filter_stocks 函数
-        final_results = filter_stocks(roe, gross_margin, net_profit)
+        final_results = filter_stocks(years,roe, gross_margin, net_profit,income_growth,net_pro_growth)
         result = {
             'columns': final_results.columns.tolist(),
             'data': final_results.to_dict('records'),

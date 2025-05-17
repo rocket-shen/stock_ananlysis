@@ -26,15 +26,17 @@ function getValue(id) {
 
 function getNumeric(id, multiplier = 1) {
     const val = parseFloat(getValue(id));
-    return isNaN(val) ? null : val * multiplier;
+    if (isNaN(val)) return null;
+    const result = val * multiplier;
+    return id === 'years' ? Math.floor(result) : result; // 对于 years 字段取整
 }
-
 
 // =====================
 // 📊 股票数据处理
 // =====================
 let originalData = [], currentSort = { column: null, order: null };
 let lastStockCode = null, cachedFinancialData = null;
+let histogramImage = null; // 定义全局变量存储直方图图片
 
 async function fetchStockData() {
     const stockCode = getValue('stockCode');
@@ -48,9 +50,9 @@ async function fetchStockData() {
 
     try {
         const data = await fetchJson(`/get_stock_data?symbol=${stockCode}&start_date=${startDate}&end_date=${endDate}&sort_column=${sortColumn}&sort_order=${sortOrder}`);
-
         if (data.error) return showError(data.error);
         originalData = data.table;
+        histogramImage = data.histogram_image
 
         document.getElementById('stockName').innerHTML = `<p><strong>股票名称:<span class="text-red-500">${data.stock_name}</span></strong></p>`;
         document.getElementById('dataInfo').innerHTML = `<p><strong>交易日:<span class="text-red-500">${data.shape[0]}</span>天</strong></p>`;
@@ -58,13 +60,12 @@ async function fetchStockData() {
             <p><strong>最高市值:</strong><span class="text-red-500"> ${data.max_market_cap['市值（亿）']}</span> 亿 (日期: ${data.max_market_cap['日期']})</p>
             <p><strong>最低市值:</strong><span class="text-green-500"> ${data.min_market_cap['市值（亿）']}</span> 亿 (日期: ${data.min_market_cap['日期']})</p>
         `;
-        document.getElementById('tableTitle').textContent = `${startDate} 至 ${endDate} ${sortColumn} 交易数据`;
+        document.getElementById('tableTitle').textContent = `${data.stock_name} ${startDate} 至 ${endDate} ${sortColumn} 交易数据`;
 
-        if (data.histogram_image) {
-            document.getElementById('histogramImage').src = `data:image/png;base64,${data.histogram_image}`;
-            document.getElementById('histogramContainer').classList.remove('hidden');
-        } else {
-            document.getElementById('histogramContainer').classList.add('hidden');
+        // 显示直方图按钮（无论是否有 histogramImage）
+        const showHistogramBtn = document.getElementById('showHistogramBtn');
+        if (showHistogramBtn) {
+            showHistogramBtn.classList.remove('hidden');
         }
 
         applyFilters();
@@ -76,8 +77,29 @@ async function fetchStockData() {
     }
 }
 
+// 新函数：显示直方图图片
+function showHistogram() {
+    if (!histogramImage) {
+        showError('当前无直方图图片可显示，请先查询股票数据。');
+        return;
+    }
+
+    // 创建一个新窗口显示图片
+    const imgWindow = window.open('');
+    imgWindow.document.write(`
+        <html>
+        <head>
+            <title>股票直方图</title>
+        </head>
+        <body style="display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0;">
+            <img src="data:image/png;base64,${histogramImage}" style="max-width: 100%; max-height: 100%;">
+        </body>
+        </html>
+    `);
+}
+
 async function fetchFinancialRep() {
-    const stockCode = getValue('stockInfoCode');
+    const stockCode = getValue('stockCode');
     try{
         const data = await fetchJson(`/get_financial_report?symbol=${stockCode}`);
          if (data.error) {
@@ -93,7 +115,7 @@ async function fetchFinancialRep() {
 }
 
 async function fetchStockInfo(){
-    const stockCode = getValue('stockInfoCode');
+    const stockCode = getValue('stockCode');
     if (!stockCode) return showError('请输入证券代码。');
 
     try{
@@ -107,8 +129,7 @@ async function fetchStockInfo(){
         document.getElementById('floatShares').textContent = formatNumber(data.stock_info_dict['流通股']) + '亿';
         document.getElementById('marketCap').textContent = formatNumber(data.stock_info_dict['总市值']) + '亿';
         document.getElementById('currentPrice').textContent = formatNumber(data.stock_info_dict['现价']) + '元';
-        // 显示金融信息区域
-        document.getElementById('stockInfoDict').classList.remove('hidden');
+
 
     }catch (err) {
         console.error('获取数据失败:', err);
@@ -160,7 +181,7 @@ function renderFinancialTable(data) {
     const headerRow = document.getElementById('financialHeader');
     const body = document.getElementById('financialBody');
 
-    document.getElementById('stockAbbr').textContent = `${data.stock_abbr} 财务数据摘要:`
+    document.getElementById('stockAbbr').innerHTML = `<span class="text-red-600">${data.stock_abbr}</span> 财务数据摘要:`
 
     headerRow.innerHTML = data.columns.map(col => `<th class="p-2 border">${col}</th>`).join('');
     body.innerHTML = data.table.map(row => `
@@ -177,22 +198,25 @@ function renderFinancialTable(data) {
 // 🧮 筛选处理
 // =====================
 async function filterStocks() {
+    const years = getNumeric('years')
     const roe = getNumeric('roe');
     const gross = getNumeric('grossMargin');
     const profit = getNumeric('netProfit', 1e8);
+    const income_growth = getNumeric('incomeGrowth');
+    const net_pro_growth = getNumeric('netProGrowth');
 
-    if ([roe, gross, profit].some(v => v === null)) return showError('请输入有效的筛选条件');
+    if ([years,roe, gross, profit,income_growth,net_pro_growth].some(v => v === null)) return showError('请输入有效的筛选条件');
 
     try {
         const data = await fetchJson('/get_filtered_stocks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ roe, gross_margin: gross, net_profit: profit })
+            body: JSON.stringify({years:years, roe:roe, gross_margin: gross, net_profit: profit, income_growth:income_growth, net_pro_growth:net_pro_growth})
         });
 
         if (!data.columns || !Array.isArray(data.data)) throw new Error('无效的响应数据格式');
 
-        document.getElementById('resultsAmount').innerHTML = `<p><strong>符合条件的股票数量:<span class="text-red-500">${data.results_amount[0]}</span> 只</strong></p>`;
+        document.getElementById('resultsAmount').innerHTML = `<p><strong>筛选出符合条件的股票数量:<span class="text-red-500">${data.results_amount[0]}</span> 只</strong></p>`;
 
         document.getElementById('filterResultHeader').innerHTML = data.columns.map(col => `<th class="p-2 border">${col}</th>`).join('');
 
@@ -222,9 +246,15 @@ async function filterStocks() {
 // =====================
 function initEventListeners() {
     document.getElementById('fetchData').addEventListener('click', fetchStockData);
+    document.getElementById('fetchData').addEventListener('click', fetchStockInfo);
+    document.getElementById('fetchData').addEventListener('click', fetchFinancialRep);
     document.getElementById('filterStocks').addEventListener('click', filterStocks);
-    document.getElementById('stockInfo').addEventListener('click', fetchStockInfo);
-    document.getElementById('stockInfo').addEventListener('click', fetchFinancialRep);
+
+    // 为新按钮添加事件监听器
+    const showHistogramBtn = document.getElementById('showHistogramBtn');
+    if (showHistogramBtn) {
+        showHistogramBtn.addEventListener('click', showHistogram);
+    }
     document.getElementById('stockCode').addEventListener('keydown', e => {
         if (e.key === 'Enter') fetchStockData();
     });

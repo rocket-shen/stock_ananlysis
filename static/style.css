@@ -132,7 +132,7 @@
 
 /* 筛选结果表格 */
 #filterResultContainer {
-    max-height: 800px;
+    max-height: 400px;
     overflow-y: auto;
     margin-top: 1.5rem;
 }

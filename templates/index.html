@@ -15,20 +15,32 @@
             <!-- 左侧表单 -->
             <form id="filterForm" class="flex-none">
                 <div class="flex flex-wrap gap-4">
+                    <div class="flex flex-col">
+                        <label for="years" class="mb-1 font-medium text-gray-700">报告期年数</label>
+                        <input type="number" id="years" placeholder="年" class="p-2 border rounded w-32" step="0.01">
+                    </div>
                     <!-- 净资产收益率 -->
                     <div class="flex flex-col">
                         <label for="roe" class="mb-1 font-medium text-gray-700">净资产收益率 (%)</label>
-                        <input type="number" id="roe" placeholder="%" class="p-2 border rounded w-48" step="0.01">
+                        <input type="number" id="roe" placeholder="%" class="p-2 border rounded w-32" step="0.01">
                     </div>
                     <!-- 销售毛利率 -->
                     <div class="flex flex-col">
                         <label for="grossMargin" class="mb-1 font-medium text-gray-700">销售毛利率 (%)</label>
-                        <input type="number" id="grossMargin" placeholder="%" class="p-2 border rounded w-48" step="0.01">
+                        <input type="number" id="grossMargin" placeholder="%" class="p-2 border rounded w-32" step="0.01">
                     </div>
                     <!-- 净利润 -->
                     <div class="flex flex-col">
                         <label for="netProfit" class="mb-1 font-medium text-gray-700">净利润 (亿元)</label>
-                        <input type="number" id="netProfit" placeholder="亿元" class="p-2 border rounded w-48" step="0.01">
+                        <input type="number" id="netProfit" placeholder="亿元" class="p-2 border rounded w-32" step="0.01">
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="incomeGrowth" class="mb-1 font-medium text-gray-700">营收增长率 (%)</label>
+                        <input type="number" id="incomeGrowth" placeholder="%" class="p-2 border rounded w-32" step="0.01">
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="netProGrowth" class="mb-1 font-medium text-gray-700">净利润增长率 (%)</label>
+                        <input type="number" id="netProGrowth" placeholder="%" class="p-2 border rounded w-32" step="0.01">
                     </div>
                     <!-- 筛选按钮 -->
                     <div class="flex items-end">
@@ -36,39 +48,8 @@
                     </div>
                 </div>
             </form>
-            <div class="flex flex-wrap gap-12 items-center">  <!-- 关键修改 -->
-                <div class="flex flex-col">
-                    <label for="stockInfoCode" class="mb-1 font-medium text-gray-700">股票代码</label>
-                    <div class="flex gap-2 items-center">
-                        <input type="text" id="stockInfoCode" placeholder="例如：000895" class="p-2 border rounded w-48">
-                        <button type="button" id="stockInfo" class="bg-red-500 text-white p-2 rounded hover:bg-blue-600 whitespace-nowrap h-10">查询信息</button>
-                    </div>
-                </div>
-                <!-- 股票信息显示 -->
-                <div id="stockInfoDict" class="grid grid-cols-3 gap-2 text-right hidden flex-grow">
-                    <div>股票简称: <span id="stockAbbre" class="text-red-500"></span></div>
-                    <div>所处行业: <span id="industry" class="text-red-500"></span></div>
-                    <div>股本: <span id="totalShares" class="text-red-500"></span></div>
-                    <div>流通股本: <span id="floatShares" class="text-red-500"></span></div>
-                    <div>市值: <span id="marketCap" class="text-red-500"></span></div>
-                    <div>现价: <span id="currentPrice" class="text-red-500"></span></div>
-                </div>
-            </div>
         </div>
         <div class="text-red-800 text-base whitespace-nowrap mt-2">* 请输入有效的筛选条件</div>
-        <div id="financialContainer" class="overflow-x-auto mt-6 hidden">
-            <!-- 标题行：flex布局 -->
-            <div class="flex justify-between items-center mb-4">
-                <h2 id="stockAbbr" class="text-2xl text-gray-700 font-bold"></h2>
-            </div>
-            <!-- 表格 -->
-            <table id="financialTable" class="min-w-full bg-white border">
-                <thead>
-                    <tr class="bg-gray-200" id="financialHeader"></tr>
-                </thead>
-                <tbody id="financialBody"></tbody>
-            </table>
-        </div>
         <div id="resultsAmount" class="text-xl text-gray-700 font-bold"></div>
         <!-- 筛选结果表格 -->
         <div id="filterResultContainer" class="overflow-x-auto mt-6 hidden">
@@ -79,11 +60,9 @@
                 <tbody id="filterResultBody"></tbody>
             </table>
         </div>
-        
-        <h1 class="text-2xl font-bold mb-4 text-center">A股数据分析</h1>
-        <div class="mb-4">
-            <!-- 外层 flex，左右分开 -->
-            <div class="flex justify-between items-center flex-wrap space-y-2">
+
+        <div class="flex flex-wrap gap-12 items-center justify-end">  <!-- 关键修改 --></div>
+        <div class="flex justify-between items-center flex-wrap space-y-2">
                 <!-- 左边：输入控件 -->
                 <div class="flex items-center space-x-2 flex-wrap">
                     <input type="text" id="stockCode" placeholder="例如 600519" class="p-2 border rounded w-40">
@@ -101,18 +80,44 @@
                     <div id="stockName" class="text-xl text-gray-700 font-bold"></div>
                     <div id="dataInfo" class="text-xl text-gray-700 font-bold"></div>
                 </div>
-                <!-- 右边：marketCapInfo -->
-                <div id="marketCapInfo" class="text-gray-700 font-bold text-right"></div>
+                
             </div>
             <div>
                 <span class="text-red-800 text-base whitespace-nowrap">* 请输入有效的日期格式</span>
             </div>
-            
-            <div id="histogramContainer" class="mt-4 hidden">
-                <img id="histogramImage" src="" alt="对数换手率直方图" class="mx-auto">
+        <div id="financialContainer" class="overflow-x-auto mt-6 hidden">
+            <!-- 标题行：flex布局 -->
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="stockAbbr" class="text-2xl text-gray-700 font-bold"></h2>
+                <!-- 股票信息显示 -->
+                <div id="stockInfoDict" class="grid grid-cols-3 gap-2 text-right font-bold w-auto">
+                    <div>股票简称: <span id="stockAbbre" class="text-red-500 font-bold"></span></div>
+                    <div>股本: <span id="totalShares" class="text-red-500 font-bold"></span></div>
+                    <div>流通股本: <span id="floatShares" class="text-red-500 font-bold"></span></div>
+                    <div>所处行业: <span id="industry" class="text-red-500 font-bold"></span></div>
+                    <div>市值: <span id="marketCap" class="text-red-500 font-bold"></span></div>
+                    <div>现价: <span id="currentPrice" class="text-red-500 font-bold"></span></div>
+                </div>
             </div>
+            <!-- 表格 -->
+            <table id="financialTable" class="min-w-full bg-white border">
+                <thead>
+                    <tr class="bg-gray-200" id="financialHeader"></tr>
+                </thead>
+                <tbody id="financialBody"></tbody>
+            </table>
         </div>
-        <h1 id="tableTitle" class="text-2xl text-red-500 font-bold mb-4 text-center"></h1>
+        
+        <button id="showHistogramBtn" class="hidden mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            弹出直方图
+        </button>
+        <div id="histogramContainer" class="hidden mt-4">
+            <img id="histogramImage" class="w-full" alt="股票数据直方图">
+        </div>
+        <div class="flex items-end justify-between"> <!-- 新增 flex 布局 -->
+            <h1 id="tableTitle" class="text-2xl text-red-500 font-bold mb-4"></h1>
+            <div id="marketCapInfo" class="text-gray-500 font-bold"></div>
+        </div>
         <div id="tableContainer" class="overflow-x-auto">
             <table id="stockTable" class="min-w-full bg-white border hidden">
                 <thead>
@@ -157,6 +162,7 @@
                 <tbody id="tableBody"></tbody>
             </table>
         </div>
+        
     </div>
     <script src="static/script.js"></script>
 </body>
