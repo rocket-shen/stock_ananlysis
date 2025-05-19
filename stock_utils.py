@@ -39,7 +39,6 @@ def process_stock_data(df, sort_column, sort_order):
     ascending = sort_order == 'asc'
     top_50 = df.sort_values(by=sort_column, ascending=ascending).head(50)
     select_top50 = top_50[['日期', '开盘', '收盘', '最高', '最低', '涨跌幅', '成交量', '换手率', '市值（亿）']].sort_values(by='日期', ascending=True)
-    logging.info(f"数据列名: {df.columns}")
 
     return max_market_cap, min_market_cap, select_top50
 
@@ -85,28 +84,43 @@ def fetch_financial_report(stock_code):
 
     return stock_abbr, available_columns, data
 
-def generate_turnover_histogram(df, stock_name):
+def process_log_turnover(df, stock_name):
+    """
+    处理换手率数据并返回对数化结果及统计数据
+    """
     try:
-        plt.switch_backend('Agg')
-        # 提取换手率并去除非正值
         turnover = df["换手率"].dropna()
         turnover = turnover[turnover > 0]
         if turnover.empty:
-            logging.warning(f"股票数据中包含无有效换手率数据")
-            return None
-
-        # 计算对数换手率
+            logging.warning(f"股票 {stock_name} 无有效换手率数据")
+            return None, None, None, pd.DataFrame(), pd.DataFrame()
         log_turnover = np.log(turnover)
         mu = log_turnover.mean()
         sigma = log_turnover.std()
         std_lines = [mu - 2*sigma, mu - sigma, mu, mu + sigma, mu + 2*sigma]
         real_turnover_values = np.exp(std_lines).round(2)
+        # 计算低于和高于 2 倍标准差的数据
+        threshold_blow = np.exp(mu - 2*sigma)
+        threshold_above = np.exp(mu + 2*sigma)
+        turnover_blow_2sigma = df[df["换手率"] < threshold_blow]
+        turnover_above_2sigma = df[df["换手率"] > threshold_above]
 
-        # 设置中文字体
+        return log_turnover, std_lines, real_turnover_values, turnover_blow_2sigma, turnover_above_2sigma
+    
+    except Exception as e:
+        logging.error(f"处理换手率数据失败: {str(e)}")
+        return None, None, None, pd.DataFrame(), pd.DataFrame()
+    
+def plot_histogram(log_turnover, std_lines, real_turnover_values, stock_name):
+    """
+    根据对数换手率数据生成直方图
+    """
+    try:
+        if log_turnover is None or std_lines is None or real_turnover_values is None:
+            logging.warning(f"无法生成 {stock_name} 的直方图：无效输入数据")
+            return None
         plt.rcParams['font.sans-serif'] = ['SimHei']
         plt.rcParams['axes.unicode_minus'] = False
-
-        # 绘图
         plt.figure(figsize=(12, 6))
         plt.hist(log_turnover, bins=30, density=False, alpha=0.7, color='skyblue', edgecolor='black')
         for i, (x, r) in enumerate(zip(std_lines, real_turnover_values)):
@@ -118,14 +132,13 @@ def generate_turnover_histogram(df, stock_name):
         plt.ylabel("出现次数", fontsize=12)
         plt.grid(True)
         plt.tight_layout()
-
-        # 将图表保存到内存并转换为 Base64
         buffer = io.BytesIO()
         plt.savefig(buffer, format='png')
         buffer.seek(0)
         image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-        plt.close()  # 关闭图表以释放内存
+        plt.close()
         return image_base64
+    
     except Exception as e:
         logging.error(f"生成直方图失败: {str(e)}")
         return None
@@ -178,6 +191,7 @@ def filter_stocks(years ,roe, gross_margin, net_profit, income_growth,net_pro_gr
         final_results = final_results[selected_columns]
         final_results = final_results.replace([np.nan, pd.NA], None)
         return final_results
+    
     except Exception as e:
         logging.error(f"筛选股票失败: {str(e)}")
         raise Exception(f"筛选股票失败: {str(e)}")

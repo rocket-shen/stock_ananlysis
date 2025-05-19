@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
+import pandas as pd
 import os
 import webbrowser
 from stock_utils import (
@@ -7,7 +8,8 @@ from stock_utils import (
     fetch_stock_data,
     process_stock_data,
     fetch_financial_report,
-    generate_turnover_histogram,
+    process_log_turnover,
+    plot_histogram,
     filter_stocks,
     fetch_stock_info
 )
@@ -18,6 +20,10 @@ CORS(app, resources={r"/get_*": {"origins": ["http://localhost:5000"]}})
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/histogram')
+def histogram():
+    return render_template('histogram.html')
 
 @app.route('/get_stock_data')
 def get_stock_data():
@@ -39,7 +45,8 @@ def get_stock_data():
 
         df, stock_name = fetch_stock_data(symbol, start_date, end_date)
         max_market_cap, min_market_cap, select_top50 = process_stock_data(df, sort_column, sort_order)
-        histogram_image = generate_turnover_histogram(df, stock_name)  # 生成直方图
+        log_turnover, std_lines, real_turnover_values, turnover_blow_2sigma, turnover_above_2sigma = process_log_turnover(df, stock_name)
+        histogram_image = plot_histogram(log_turnover, std_lines, real_turnover_values, stock_name)
 
         response = {
             'shape': list(df.shape),
@@ -47,7 +54,11 @@ def get_stock_data():
             'stock_name': stock_name,
             'max_market_cap': max_market_cap,
             'min_market_cap': min_market_cap,
-            'histogram_image': histogram_image
+            'histogram_image': histogram_image,
+            'real_turnover_values': real_turnover_values.tolist() if real_turnover_values is not None else None,
+            'df': df.to_dict(orient='records'),
+            'turnover_above_2sigma': turnover_above_2sigma.to_dict(orient='records'),
+            'turnover_blow_2sigma' : turnover_blow_2sigma.to_dict(orient='records')
         }
         return jsonify(response)
     except Exception as e:
@@ -58,7 +69,6 @@ def get_stock_data():
 def get_stock_info():
     try:
         symbol = request.args.get('symbol').strip()
-        app.logger.info(f"请求查询股票信息: symbol={symbol}")
         if not symbol:
             return jsonify({'error': '股票代码不能为空'}), 400
         stock_info_dict= fetch_stock_info(symbol)
@@ -73,7 +83,6 @@ app.view_functions.pop('get_financial_report', None)
 @app.route('/get_financial_report')
 def get_financial_report():
     stock_code = request.args.get('symbol', '').strip()
-    app.logger.info(f"请求财务报表: symbol={stock_code}")
     try:
         stock_abbr, available_columns, data = fetch_financial_report(stock_code)
         response = {'stock_abbr':stock_abbr,'table': data, 'columns': available_columns}
@@ -81,6 +90,8 @@ def get_financial_report():
     except Exception as e:
         app.logger.error(f"获取财务报表失败: {str(e)}")
         return jsonify({'error': str(e)}), 404
+
+
 
 @app.route('/get_filtered_stocks', methods=['POST'])
 def get_filter_stocks():

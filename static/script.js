@@ -21,7 +21,7 @@ async function fetchJson(url, options = {}) {
 }
 
 function getValue(id) {
-    return document.getElementById(id).value.trim();
+    return document.getElementById(id)?.value.trim() || '';
 }
 
 function getNumeric(id, multiplier = 1) {
@@ -36,7 +36,9 @@ function getNumeric(id, multiplier = 1) {
 // =====================
 let originalData = [], currentSort = { column: null, order: null };
 let lastStockCode = null, cachedFinancialData = null;
-let histogramImage = null; // 定义全局变量存储直方图图片
+let histogramImage = null, realTurnoverValues = null;
+let turnOverAbove = null, turnOverBlow = null;
+
 
 async function fetchStockData() {
     const stockCode = getValue('stockCode');
@@ -53,6 +55,9 @@ async function fetchStockData() {
         if (data.error) return showError(data.error);
         originalData = data.table;
         histogramImage = data.histogram_image
+        realTurnoverValues = data.real_turnover_values
+        turnOverAbove = data.turnover_above_2sigma
+        turnOverBlow = data.turnover_blow_2sigma
 
         document.getElementById('stockName').innerHTML = `<p><strong>股票名称:<span class="text-red-500">${data.stock_name}</span></strong></p>`;
         document.getElementById('dataInfo').innerHTML = `<p><strong>交易日:<span class="text-red-500">${data.shape[0]}</span>天</strong></p>`;
@@ -77,26 +82,7 @@ async function fetchStockData() {
     }
 }
 
-// 新函数：显示直方图图片
-function showHistogram() {
-    if (!histogramImage) {
-        showError('当前无直方图图片可显示，请先查询股票数据。');
-        return;
-    }
 
-    // 创建一个新窗口显示图片
-    const imgWindow = window.open('');
-    imgWindow.document.write(`
-        <html>
-        <head>
-            <title>股票直方图</title>
-        </head>
-        <body style="display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f0f0;">
-            <img src="data:image/png;base64,${histogramImage}" style="max-width: 100%; max-height: 100%;">
-        </body>
-        </html>
-    `);
-}
 
 async function fetchFinancialRep() {
     const stockCode = getValue('stockCode');
@@ -124,10 +110,10 @@ async function fetchStockInfo(){
 
         // 更新金融信息显示
         document.getElementById('stockAbbre').textContent = formatNumber(data.stock_info_dict['股票简称']);
-        document.getElementById('industry').textContent = formatNumber(data.stock_info_dict['行业']);
         document.getElementById('totalShares').textContent = formatNumber(data.stock_info_dict['总股本']) + '亿';
-        document.getElementById('floatShares').textContent = formatNumber(data.stock_info_dict['流通股']) + '亿';
         document.getElementById('marketCap').textContent = formatNumber(data.stock_info_dict['总市值']) + '亿';
+        document.getElementById('industry').textContent = formatNumber(data.stock_info_dict['行业']);
+        document.getElementById('floatShares').textContent = formatNumber(data.stock_info_dict['流通股']) + '亿';
         document.getElementById('currentPrice').textContent = formatNumber(data.stock_info_dict['现价']) + '元';
 
 
@@ -240,34 +226,136 @@ async function filterStocks() {
     }
 }
 
+// 直方图页面专用函数
+function showHistogram() {
+    if (!histogramImage || !realTurnoverValues || !turnOverAbove || !turnOverBlow) {
+        showError('当前无直方图或数据可显示，请先查询股票数据。');
+        return;
+    }
+    sessionStorage.setItem('histogramImage', histogramImage);
+    sessionStorage.setItem('realTurnoverValues', JSON.stringify(realTurnoverValues));
+    sessionStorage.setItem('turnOverAbove', JSON.stringify(turnOverAbove));
+    sessionStorage.setItem('turnOverBlow', JSON.stringify(turnOverBlow));
+    const newWindow = window.open('/histogram','_blank');
+    if (!newWindow){
+        showError('无法打开新窗口，请检查浏览器是否阻止了弹出窗口')
+    }
+}
+
+function showHistogramError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'text-red-500 mt-2';
+    errorDiv.textContent = message;
+    document.querySelector('#errorMessage')?.prepend(errorDiv);
+    setTimeout(() => errorDiv.remove(), 5000);
+}
+
+function initHistogramPage() {
+    if (window.location.pathname === '/histogram') {
+        const histogramImage = sessionStorage.getItem('histogramImage');
+        const realTurnoverValues = JSON.parse(sessionStorage.getItem('realTurnoverValues'));
+        turnOverAbove = JSON.parse(sessionStorage.getItem('turnOverAbove')); // 从 sessionStorage 获取
+        turnOverBlow = JSON.parse(sessionStorage.getItem('turnOverBlow'));   // 从 sessionStorage 获取
+        if (!histogramImage || !realTurnoverValues || !turnOverAbove || !turnOverBlow) {
+            showHistogramError('缺少必要数据，请重新查询股票数据。');
+            return;
+        }
+
+        document.getElementById('histogram').innerHTML = `
+            <img src="data:image/png;base64,${histogramImage}" alt="换手率直方图"  class="mx-auto my-2">
+        `;
+        document.getElementById('filterButtons').innerHTML = `
+            <button onclick="filterData('below')" class="px-4 py-2 bg-blue-500 text-white rounded mx-2">换手率 < ${realTurnoverValues[0]}%</button>
+            <button onclick="filterData('above')" class="px-4 py-2 bg-blue-500 text-white rounded mx-2">换手率 > ${realTurnoverValues[4]}%</button>
+        `;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initHistogramPage);
+
+
+async function filterData(filterType) {
+    if (!turnOverAbove || !turnOverBlow) {
+        showHistogramError('筛选参数错误：缺少 turnOverAbove 或 turnOverBlow');
+        return;
+    }
+    try {
+        const headers = ['日期', '开盘', '收盘', '最高', '最低', '涨跌幅', '成交量', '换手率', '市值（亿）'];
+        let filteredData;
+        if (filterType === 'below') {
+            filteredData = turnOverBlow;
+        } else if (filterType === 'above') {
+            filteredData = turnOverAbove;
+        } else {
+            showHistogramError('无效的筛选类型');
+            return;
+        }
+
+        if (!Array.isArray(filteredData) || filteredData.length === 0) {
+            showHistogramError('筛选数据为空');
+            return;
+        }
+        const requiredColumns = headers;
+        const isValid = filteredData.every(row => requiredColumns.every(col => col in row));
+        if (!isValid) {
+            showHistogramError('筛选数据格式不正确');
+            return;
+        }
+
+        document.getElementById('filteredHeader').innerHTML = headers.map(col => `<th>${col}</th>`).join('');
+        document.getElementById('filteredBody').innerHTML = filteredData.map(row => `
+            <tr>
+                ${headers.map(col => `<td>${formatNumber(row[col]) || '-'}</td>`).join('')}
+            </tr>
+        `).join('');
+    } catch (err) {
+        showHistogramError('筛选失败: ' + err.message);
+    }
+}
 
 // =====================
 // 🔁 初始化事件
 // =====================
 function initEventListeners() {
-    document.getElementById('fetchData').addEventListener('click', fetchStockData);
-    document.getElementById('fetchData').addEventListener('click', fetchStockInfo);
-    document.getElementById('fetchData').addEventListener('click', fetchFinancialRep);
-    document.getElementById('filterStocks').addEventListener('click', filterStocks);
-
-    // 为新按钮添加事件监听器
-    const showHistogramBtn = document.getElementById('showHistogramBtn');
-    if (showHistogramBtn) {
-        showHistogramBtn.addEventListener('click', showHistogram);
+    if (window.location.pathname==='/histogram'){
+        initHistogramPage();
+        return;
     }
-    document.getElementById('stockCode').addEventListener('keydown', e => {
-        if (e.key === 'Enter') fetchStockData();
-    });
+    // index.html 的事件监听器
+    const fetchDataBtn = document.getElementById('fetchData');
+    if (fetchDataBtn){
+        fetchDataBtn.addEventListener('click', () =>{
+            fetchStockData();
+            fetchFinancialRep();
+            fetchStockInfo();
+        })
+    }
 
-    document.getElementById('filterForm').addEventListener('submit', e => {
-        e.preventDefault();
-        // 获取触发提交的按钮
-        const submitter = e.submitter;
-        
-        if (submitter.id === 'filterStocks') {
-            filterStocks(); // 执行股票筛选函数
-        } 
-    });
+    const filterStocksBtn = document.getElementById('filterStocks');
+    if (filterStocksBtn){
+        filterStocksBtn.addEventListener('click',filterStocks);
+    }
+
+    const stockCodeInput = document.getElementById('stockCode');
+    if (stockCodeInput) {
+        stockCodeInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                fetchStockData();
+                fetchStockInfo();
+                fetchFinancialRep();
+            }
+        });
+    }
+    
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', e => {
+            e.preventDefault();
+            if (e.submitter.id === 'filterStocks') {
+                filterStocks();
+            }
+        });
+    }
 
     document.querySelectorAll('.sort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -280,6 +368,12 @@ function initEventListeners() {
             applyFilters();
         });
     });
+
+    // 为 showHistogramBtn 添加点击事件
+    const showHistogramBtn = document.getElementById('showHistogramBtn');
+    if (showHistogramBtn) {
+        showHistogramBtn.addEventListener('click', showHistogram);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initEventListeners);
