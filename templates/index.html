@@ -60,28 +60,25 @@
                 <tbody id="filterResultBody"></tbody>
             </table>
         </div>
-
-        <div class="flex flex-wrap gap-12 items-center justify-end">  <!-- 关键修改 --></div>
         <div class="flex justify-between items-center flex-wrap space-y-2">
-                <!-- 左边：输入控件 -->
-                <div class="flex items-center space-x-2 flex-wrap">
-                    <input type="text" id="stockCode" placeholder="例如 600519" class="p-2 border rounded w-40">
-                    <input type="text" id="startDate" placeholder="起始日期 YYYYMMDD" class="p-2 border rounded w-40">
-                    <input type="text" id="endDate" placeholder="结束日期 YYYYMMDD" class="p-2 border rounded w-40">
-                    <select id="sortColumn" class="p-2 border rounded w-32">
-                        <option value="换手率" selected>换手率</option>
-                        <option value="涨跌幅">涨跌幅</option>
-                    </select>
-                    <select id="sortOrder" class="p-2 border rounded w-32">
-                        <option value="desc" selected>降序 (前 50)</option>
-                        <option value="asc">升序 (前 50)</option>
-                    </select>
-                    <button id="fetchData" class="bg-red-500 text-white p-2 rounded hover:bg-blue-600 whitespace-nowrap">查询数据</button>
-                    <div id="stockName" class="text-xl text-gray-700 font-bold"></div>
-                    <div id="dataInfo" class="text-xl text-gray-700 font-bold"></div>
-                </div>
-                
+            <!-- 左边：输入控件 -->
+            <div class="flex items-center space-x-2 flex-wrap">
+                <input type="text" id="stockCode" placeholder="例如 600519" class="p-2 border rounded w-40">
+                <input type="text" id="startDate" placeholder="起始日期 YYYYMMDD" class="p-2 border rounded w-40">
+                <input type="text" id="endDate" placeholder="结束日期 YYYYMMDD" class="p-2 border rounded w-40">
+                <select id="sortColumn" class="p-2 border rounded w-32">
+                    <option value="换手率" selected>换手率</option>
+                    <option value="涨跌幅">涨跌幅</option>
+                </select>
+                <select id="sortOrder" class="p-2 border rounded w-32">
+                    <option value="desc" selected>降序 (前 50)</option>
+                    <option value="asc">升序 (前 50)</option>
+                </select>
+                <button id="fetchData" class="bg-red-500 text-white p-2 rounded hover:bg-blue-600 whitespace-nowrap">查询数据</button>
+                <div id="stockName" class="text-xl text-gray-700 font-bold"></div>
+                <div id="dataInfo" class="text-xl text-gray-700 font-bold"></div>
             </div>
+        </div>
             <div>
                 <span class="text-red-800 text-base whitespace-nowrap">* 请输入有效的日期格式</span>
             </div>
@@ -107,15 +104,13 @@
                 <tbody id="financialBody"></tbody>
             </table>
         </div>
-        <hr/>
-        <button id="showHistogramBtn" class="hidden mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        <div class="flex items-center justify-between">
+        <button id="showHistogramBtn" class="hidden mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-auto">
             对数换手率直方图
         </button>
-        <div id="histogramContainer" class="hidden mt-4">
-            <img id="histogramImage" class="w-full" alt="股票数据直方图">
         </div>
         <div class="flex items-end justify-between"> <!-- 新增 flex 布局 -->
-            <h1 id="tableTitle" class="text-2xl text-red-500 font-bold mb-4"></h1>
+            <h1 id="tableTitle" class="text-2xl text-red-500 font-bold"></h1>
             <div id="marketCapInfo" class="text-gray-500 font-bold"></div>
         </div>
         <div id="tableContainer" class="overflow-x-auto">

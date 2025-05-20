@@ -111,7 +111,7 @@ def process_log_turnover(df, stock_name):
         logging.error(f"处理换手率数据失败: {str(e)}")
         return None, None, None, pd.DataFrame(), pd.DataFrame()
     
-def plot_histogram(log_turnover, std_lines, real_turnover_values, stock_name):
+def plot_histogram(log_turnover, std_lines, real_turnover_values, stock_name, symbol):
     """
     根据对数换手率数据生成直方图
     """
@@ -127,7 +127,7 @@ def plot_histogram(log_turnover, std_lines, real_turnover_values, stock_name):
             plt.axvline(x=x, color='green', linestyle='--', linewidth=1)
             label = f"ln(x)={x:.2f}\n换手率≈{r:.2f}%"
             plt.text(x, plt.ylim()[1]*0.8, label, rotation=90, verticalalignment='top', color='green', fontsize=9)
-        plt.title(f"{stock_name} 对数换手率的频数直方图", fontsize=14)
+        plt.title(f"{symbol} {stock_name} 对数换手率的频数直方图", fontsize=14)
         plt.xlabel("对数换手率 ln(换手率)", fontsize=12)
         plt.ylabel("出现次数", fontsize=12)
         plt.grid(True)

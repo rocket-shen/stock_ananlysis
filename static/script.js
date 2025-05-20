@@ -236,6 +236,12 @@ function showHistogram() {
     sessionStorage.setItem('realTurnoverValues', JSON.stringify(realTurnoverValues));
     sessionStorage.setItem('turnOverAbove', JSON.stringify(turnOverAbove));
     sessionStorage.setItem('turnOverBlow', JSON.stringify(turnOverBlow));
+    // 新增：存储 marketCapInfo 和 dataInfo 的内容
+    const marketCapInfo = document.getElementById('marketCapInfo')?.innerHTML || '';
+    const dataInfo = document.getElementById('dataInfo')?.innerHTML || '';
+    sessionStorage.setItem('marketCapInfo', marketCapInfo);
+    sessionStorage.setItem('dataInfo', dataInfo);
+
     const newWindow = window.open('/histogram','_blank');
     if (!newWindow){
         showError('无法打开新窗口，请检查浏览器是否阻止了弹出窗口')
@@ -256,6 +262,9 @@ function initHistogramPage() {
         const realTurnoverValues = JSON.parse(sessionStorage.getItem('realTurnoverValues'));
         turnOverAbove = JSON.parse(sessionStorage.getItem('turnOverAbove')); // 从 sessionStorage 获取
         turnOverBlow = JSON.parse(sessionStorage.getItem('turnOverBlow'));   // 从 sessionStorage 获取
+        // 新增：获取 marketCapInfo 和 dataInfo 的内容并显示
+        const marketCapInfo = sessionStorage.getItem('marketCapInfo');
+        const dataInfo = sessionStorage.getItem('dataInfo');
         if (!histogramImage || !realTurnoverValues || !turnOverAbove || !turnOverBlow) {
             showHistogramError('缺少必要数据，请重新查询股票数据。');
             return;
@@ -268,9 +277,17 @@ function initHistogramPage() {
             <button onclick="filterData('below')" class="px-4 py-2 bg-blue-500 text-white rounded mx-2">换手率 < ${realTurnoverValues[0]}%</button>
             <button onclick="filterData('above')" class="px-4 py-2 bg-blue-500 text-white rounded mx-2">换手率 > ${realTurnoverValues[4]}%</button>
         `;
+
+        // 新增：显示 marketCapInfo 和 dataInfo
+        if (marketCapInfo) {
+            document.getElementById('marketCapInfo').innerHTML = marketCapInfo;
+        }
+        if (dataInfo) {
+            document.getElementById('dataInfo').innerHTML = dataInfo;
+            
     }
 }
-
+}
 document.addEventListener('DOMContentLoaded', initHistogramPage);
 
 

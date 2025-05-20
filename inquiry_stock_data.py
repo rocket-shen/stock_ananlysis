@@ -46,7 +46,7 @@ def get_stock_data():
         df, stock_name = fetch_stock_data(symbol, start_date, end_date)
         max_market_cap, min_market_cap, select_top50 = process_stock_data(df, sort_column, sort_order)
         log_turnover, std_lines, real_turnover_values, turnover_blow_2sigma, turnover_above_2sigma = process_log_turnover(df, stock_name)
-        histogram_image = plot_histogram(log_turnover, std_lines, real_turnover_values, stock_name)
+        histogram_image = plot_histogram(log_turnover, std_lines, real_turnover_values, stock_name, symbol)
 
         response = {
             'shape': list(df.shape),
